@@ -1,0 +1,25 @@
+{
+	"name": "Draft",
+	"tree": {
+		"$className": "DataModel",
+		"ReplicatedStorage": {
+			"$className": "ReplicatedStorage",
+			"Packages": {
+				"$path": "Packages"
+			},
+			"Draft": {
+				"$path": "src"
+			},
+			"tests": {
+				"$className": "Folder",
+				"$path": "tests"
+			}
+		},
+		"ServerScriptService": {
+			"$className": "ServerScriptService",
+			"RunTests": {
+				"$path": "bin/run-tests.server.lua"
+			}
+		}
+	}
+}
