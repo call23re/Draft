@@ -23,14 +23,16 @@ local oldState = {
 	}
 }
 
-local newState = Produce(oldState, function(Draft, Util)
+local newState = Produce(oldState, function(Draft, table)
 	Draft.foo = 2
 	
 	local b = Draft.bar.b
 	
-	Util.Iterate(b, function(key, value)
+	table.Iterate(b, function(key, value)
 		b[key] *= 2
 	end)
+
+	table.insert(Draft, {1, 2, 3})
 end)
 ```
 Iterating with numeric for works as normal. Inverting a 2d array:
@@ -53,9 +55,9 @@ end)
 ```
 
 ## Limitations
-Unfortunately Luau doesn't support the _pairs_ or _ipairs_ metamethods. This makes it difficult to accurately emulate JavaScript-like proxies. Roblox is, however, considering an _iter_ metamethod. Until it exists, Draft exports an `Iterate` function which can be used to iterate over your current draft. It also exports custom `getmetamethod` and `setmetamethod` functions.
+Unfortunately Luau doesn't support the _pairs_ or _ipairs_ metamethods. This makes it difficult to accurately emulate JavaScript-like proxies. Roblox is, however, considering an _iter_ metamethod. Until it exists, Draft exports an `Iterate` function which can be used to iterate over your current draft. Similarly, the table library doesn't fire _index_ or _newindex_. Draft exports custom functions to emulate the table library. It also exports custom `getmetatable` and `setmetatable` functions.
 
-These can be accessesd in two ways. The first is directly from the Draft module.
+These can be accessed in two ways. The first is directly from the Draft module.
 ```lua
 local Draft = require(...Draft)
 local Produce = Draft.Produce
@@ -64,8 +66,9 @@ local Iterate = Draft.Iterate
 ```
 The second is through the second argument of Produce, which returns a dictionary.
 ```lua
-Produce(oldState, function(Draft, Util)
-	Util.Iterate(...)
-	Util.getmetatable(...)
+Produce(oldState, function(Draft, table)
+	table.Iterate(...)
+	table.insert(...)
+	table.getmetatable(...)
 	...
 ```
