@@ -33,7 +33,7 @@ local newState = Produce(oldState, function(Draft, Util)
 	end)
 end)
 ```
-Inverting a 2d array:
+Iterating with numeric for works as normal. Inverting a 2d array:
 ```lua
 local Produce = require(...Draft).Produce
 
@@ -42,12 +42,13 @@ for y = 1, 10 do
 	table.insert(oldState, table.create(10, math.random(0, 1)))
 end
 
-local newState = Produce(oldState, function(Draft, Util)
-	Util.Iterate(Draft, function(y, row)
-		Util.Iterate(row, function(x, value)
-			row[x] = (value == 1 and 0 or 1)
-		end)
-	end)
+local newState = Produce(oldState, function(Draft)
+	for y = 1, 10 do
+		local row = Draft[y]
+		for x = 1, 10 do
+			row[x] = (row[x] == 1 and 0 or 1)
+		end
+	end
 end)
 ```
 
