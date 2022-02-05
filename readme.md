@@ -2,7 +2,7 @@
 Immer-like module for handling immutable state. Made for Luau. Not currently stable. Needs lots of refactoring and testing. :(
 
 ## Introduction
-Like Immer, handling immutable state is simplified to a single `Produce` function. `Produce` takes your previous state and provides a table. This table acts as a proxy of your previous state, meaning changes made to this table won't influence your previous state. Once you're done, Draft will create a new state by combining the old state and any changes you made to the proxy.
+Like Immer, handling immutable state is simplified to a single `Produce` function. `Produce` takes your previous state and provides a table. This table acts as a proxy of your previous state, meaning changes made to this table won't influence your previous state.
 
 This means that you don't have to deal with copying tables and you aren't constrained to using special immutable data structures or helper functions.
 
@@ -68,5 +68,3 @@ Produce(oldState, function(Draft, Util)
 	Util.getmetatable(...)
 	...
 ```
-
-Because of how the _Proxy_ class works, attempting to print your draft within the produce function will return nil. This should be fixed in future versions.
