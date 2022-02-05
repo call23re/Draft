@@ -1,5 +1,5 @@
 # Draft
-Immer-like module for handling immutable state. Made for Luau. Not currently stable. Needs lots of refactoring and testing. :(
+Immer-like module for handling immutable state. Made for Luau. Stable but not production ready. Needs lots of refactoring and testing. :(
 
 ## Introduction
 Like Immer, handling immutable state is simplified to a single `Produce` function. `Produce` takes your previous state and provides a table. This table acts as a proxy of your previous state, meaning changes made to this table won't influence your previous state.
