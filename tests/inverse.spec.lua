@@ -11,12 +11,13 @@ return function()
 
 	describe("Inverse", function()
 
-		local newState = Produce(oldState, function(Draft, Util)
-			Util.Iterate(Draft, function(y, row)
-				Util.Iterate(row, function(x, value)
-					row[x] = (value == 1 and 0 or 1)
-				end)
-			end)
+		local newState = Produce(oldState, function(Draft)
+			for y = 1, 10 do
+				local row = Draft[y]
+				for x = 1, 10 do
+					row[x] = (row[x] == 1 and 0 or 1)
+				end
+			end
 		end)
 	
 		local inverted = true
@@ -36,12 +37,13 @@ return function()
 	end)
 
 	describe("Malformed Inverse", function()
-		local newState = Produce(oldState, function(Draft, Util)
-			Util.Iterate(Draft, function(y, row)
-				Util.Iterate(row, function(x, value)
-					row[x] = (value == 1 and 0 or 1)
-				end)
-			end)
+		local newState = Produce(oldState, function(Draft)
+			for y = 1, 10 do
+				local row = Draft[y]
+				for x = 1, 10 do
+					row[x] = (row[x] == 1 and 0 or 1)
+				end
+			end
 			Draft[3][6] = (Draft[3][6] == 1) and 0 or 1
 		end)
 	
