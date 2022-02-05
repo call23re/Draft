@@ -1,6 +1,8 @@
 local PROXY_SYMBOL = newproxy()
+local ID = 0
 
-local lookup = {}
+local ProxyLookup = {}
+local CloneLookup = {}
 
 local function shallowcopy(orig)
 	local copy = {}
@@ -14,20 +16,27 @@ local function shallowcopy(orig)
 	return copy
 end
 
-local function MakeProxy(node, parent)
+local function MakeProxy(node, parent, id)
 	local Proxy = {
 		Node = node,
 		Parent = parent,
 		Type = PROXY_SYMBOL,
 		Copy = shallowcopy(node),
 		Modified = false,
-		Proxy = newproxy(true)
+		Proxy = newproxy(true), -- has to be a userdata for the __len metamethod to work
+		ID = id
 	}
 
+	if not parent then
+		ID += 1
+		Proxy.ID = ID
+	end
+
 	-- TODO: abstract all this to separate Proxy class
+
 	local mt = getmetatable(Proxy.Proxy)
 
-	local custom = {
+	local metamethods = {
 		__index = function(_, index)
 			local value = Proxy.Modified and Proxy.Copy[index] or Proxy.Node[index]
 
@@ -35,8 +44,16 @@ local function MakeProxy(node, parent)
 				if value.Type == PROXY_SYMBOL then
 					return value
 				end
-				local newProxy = MakeProxy(value, Proxy)
+
+				-- this is required to deal with certain edge cases regarding cyclic tables
+				if CloneLookup[value] then
+					return CloneLookup[value].Proxy
+				end
+
+				-- if there's not already a proxy for the table, make one
+				local newProxy = MakeProxy(value, Proxy, Proxy.ID)
 				Proxy.Copy[index] = newProxy.Proxy
+				CloneLookup[value] = newProxy
 				value = newProxy.Proxy
 			end
 
@@ -58,6 +75,10 @@ local function MakeProxy(node, parent)
 			Proxy.Copy[key] = value
 
 		end,
+
+		-- reroute other metamethods to the original (cloned) table
+		-- missing __metatable and __mode
+		-- currently not supporting __metatable because it interferes with freezing
 
 		__call = function(_, ...)
 			return Proxy.Copy(...)
@@ -140,15 +161,17 @@ local function MakeProxy(node, parent)
 		end
 	}
 
-	lookup[Proxy.Proxy] = Proxy
+	ProxyLookup[Proxy.Proxy] = Proxy
 
-	for key, value in pairs(custom) do
+	for key, value in pairs(metamethods) do
 		mt[key] = value
 	end
 
 	return Proxy
 end
 
+-- Reconstructs state from a mixed tree of proxies and regular tables.
+-- Uses a stack instead of recursion because it's easier (at least in this case) to reason about.
 local function ConstructState(Root)
 	local Tree = {}
 	local currentNode = Tree
@@ -172,27 +195,34 @@ local function ConstructState(Root)
 			Data = node
 		end
 
-		root[key] = Data
-		table.insert(visited, currentNode)
+		if not table.isfrozen(root) then
+			root[key] = Data
+		end
+
+		visited[currentNode] = true
 		currentNode = Data
 
-		for key, value in pairs(Data) do
-			if type(value) == "table" then
-				table.insert(toVisit, {currentNode, key, value})
-			elseif type(value) == "userdata" then
-				if lookup[value] then
-					table.insert(toVisit, {currentNode, key, lookup[value]})
+		if not visited[currentNode] then
+			for key, value in pairs(Data) do
+				if not visited[value] then
+					if type(value) == "table" then
+						table.insert(toVisit, {currentNode, key, value})
+					elseif type(value) == "userdata" then
+						if ProxyLookup[value] then
+							table.insert(toVisit, {currentNode, key, ProxyLookup[value]})
+						end
+					end
 				end
 			end
 		end
 
 		if #toVisit == 0 then
-			table.insert(visited, currentNode)
+			visited[currentNode] = true
 		end
 
 	end
 
-	for _, v in pairs(visited) do
+	for v, _ in pairs(visited) do
 		if not table.isfrozen(v) then
 			table.freeze(v)
 		end
@@ -201,19 +231,20 @@ local function ConstructState(Root)
 	return Tree
 end
 
+-- Luau doesn't have __pairs or __ipairs, so this replaces some of that functionality.
 local function Iterate(Node, callback)
 	if type(Node) ~= "userdata" then error("Provided value is not iterable") end
 	if type(callback) ~= "function" then error("Expected function") end
-	
-	local metadata = lookup[Node]
+
+	local metadata = ProxyLookup[Node]
 	if not metadata then error("Provided value is not iterable") end
-	
+
 	for key, value in pairs(metadata.Copy) do
 		if type(value) == "table" then
 			if value.Type and value.Type == PROXY_SYMBOL then
 				value = value.Proxy
 			else
-				local proxy = MakeProxy(value, metadata)
+				local proxy = MakeProxy(value, metadata, metadata.ID)
 				Node[key] = proxy.Proxy
 				value = proxy.Proxy
 			end
@@ -255,7 +286,24 @@ local function Produce(State, callback)
 		getmetatable = fauxGetmetatable
 	})
 
-	return ConstructState(Proxy).Root
+	local newState = ConstructState(Proxy).Root
+
+	-- Clean up reference tables
+	for key, value in pairs(CloneLookup) do
+		if value.ID == Proxy.ID then
+			CloneLookup[key] = nil
+		end
+	end
+
+	for key, value in pairs(ProxyLookup) do
+		if value.ID == Proxy.ID then
+			ProxyLookup[key] = nil
+		end
+	end
+
+	ID -= 1
+
+	return newState
 end
 
 return {
