@@ -62,12 +62,12 @@ local function MakeProxy(node, parent, id)
 
 		__newindex = function(_, key, value)
 			if not Proxy.Modified then
-				rawset(Proxy, "Modified", true)
+				Proxy.Modified = true
 
 				-- propgate change up tree
 				local parent = Proxy.Parent
 				while parent do
-					rawset(parent, "Modified", true)
+					parent.Modified = true
 					parent = parent.Parent
 				end
 			end
@@ -254,25 +254,154 @@ local function Iterate(Node, callback)
 	end
 end
 
+local function Propogate(Node, Property, Value)
+	Node[Property] = Value
+	
+	local parent = Node.Parent
+	while parent do
+		parent[Property] = Value
+		parent = parent.Parent
+	end
+end
+
 local function fauxGetmetatable(Node)
 	return getmetatable(Node.Modified and Node.Copy or Node.Modified)
 end
 
 local function fauxSetmetatable(Node, mt)
 	local res = setmetatable(Node.Copy, mt)
-
-	Node.Modified = true
-
-	-- propgate change up tree
-	local parent = Node.Parent
-	while parent do
-		parent.Modified = true
-		parent = parent.Parent
-	end
-
+	
+	Propogate(Node, "Modified", true)
+	
 	return res
 end
 
+-- compatible default table functions
+
+local function insert(tbl, ...)
+	local Node = ProxyLookup[tbl]
+	
+	if Node then
+		table.insert(Node.Copy, ...)
+		Propogate(Node, "Modified", true)
+		return
+	end
+	
+	table.insert(tbl, ...)
+end
+
+local function remove(tbl, ...)
+	local Node = ProxyLookup[tbl]
+
+	if Node then
+		local res = table.remove(Node.Copy, ...)
+		Propogate(Node, "Modified", true)
+		return res
+	end
+
+	return table.remove(tbl, ...)
+end
+
+local function clear(tbl)
+	local Node = ProxyLookup[tbl]
+
+	if Node then
+		table.clear(Node.Copy)
+		Propogate(Node, "Modified", true)
+		return
+	end
+
+	table.clear(tbl)
+end
+
+local function concat(tbl, ...)
+	local Node = ProxyLookup[tbl]
+
+	if Node then
+		return table.concat(Node.Copy, ...)
+	end
+
+	return table.concat(tbl, ...)
+end
+
+local function find(tbl, ...)
+	local Node = ProxyLookup[tbl]
+
+	if Node then
+		return table.find(Node.Copy, ...)
+	end
+
+	return table.find(tbl, ...)
+end
+
+local function freeze(tbl)
+	local Node = ProxyLookup[tbl]
+	
+	if Node then
+		table.freeze(Node.Copy)
+		Propogate(Node, "Modified", true)
+		return
+	end
+	
+	table.freeze(tbl)
+end
+
+local function isfrozen(tbl)
+	local Node = ProxyLookup[tbl]
+
+	if Node then
+		return table.isfrozen(Node.Copy)
+	end
+
+	return table.isfrozen(tbl)
+end
+
+local function getn(tbl)
+	local Node = ProxyLookup[tbl]
+	
+	if Node then
+		return #Node.Copy
+	end
+	
+	return #tbl
+end
+
+local function move(tbl, ...)
+	local Node = ProxyLookup[tbl]
+
+	if Node then
+		table.move(Node.Copy, ...)
+		Propogate(Node, "Modified", true)
+		return
+	end
+
+	table.move(tbl, ...)
+end
+
+local function sort(tbl, ...)
+	local Node = ProxyLookup[tbl]
+
+	if Node then
+		table.sort(Node.Copy, ...)
+		Propogate(Node, "Modified", true)
+		return
+	end
+
+	table.sort(tbl, ...)
+end
+
+local function _unpack(tbl, ...)
+	local Node = ProxyLookup[tbl]
+
+	if Node then
+		return table.unpack(Node.Copy)
+	end
+
+	return table.unpack(tbl)
+end
+
+
+-- Takes in a state (table), sends back a "Draft" (proxy), returns a new state
 local function Produce(State, callback)
 	if type(State) ~= "table" then error("Expected table") return end
 	if type(callback) ~= "function" then error("Expected function") return end
@@ -282,8 +411,22 @@ local function Produce(State, callback)
 	callback(Proxy.Proxy, {
 		Iterate = Iterate,
 		Pairs = Iterate,
+		foreach = Iterate,
+		
 		setmetatable = fauxSetmetatable,
-		getmetatable = fauxGetmetatable
+		getmetatable = fauxGetmetatable,
+		
+		insert = insert,
+		remove = remove,
+		clear = clear,
+		concat = concat,
+		find = find,
+		freeze = freeze,
+		isfrozen = isfrozen,
+		getn = getn,
+		move = move,
+		sort = sort,
+		unpack = _unpack
 	})
 
 	local newState = ConstructState(Proxy).Root
@@ -308,7 +451,23 @@ end
 
 return {
 	Produce = Produce,
+	
 	Iterate = Iterate,
+	Pairs = Iterate,
+	foreach = Iterate,
+
 	setmetatable = fauxSetmetatable,
-	getmetatable = fauxGetmetatable
+	getmetatable = fauxGetmetatable,
+
+	insert = insert,
+	remove = remove,
+	clear = clear,
+	concat = concat,
+	find = find,
+	freeze = freeze,
+	isfrozen = isfrozen,
+	getn = getn,
+	move = move,
+	sort = sort,
+	unpack = _unpack
 }
