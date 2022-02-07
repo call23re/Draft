@@ -114,8 +114,8 @@ local function GodMode(ID)
 		Player.Stats.Points = math.huge
 		
 		table.foreach(Player.Inventory, function(_, Item)
-			if Item.Data.Damage then
-				Item.Data.Damage = math.huge
+			if Item.Settings.Damage then
+				Item.Settings.Damage = math.huge
 			end
 		end)
 	end)
