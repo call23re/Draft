@@ -55,7 +55,7 @@ end)
 ```
 When you're dealing with flat or shallow tables, this may appear to be overkill. It probably is! Draft is particularly advantageous, however, when you want to make changes to deeply nested layers of your state. 
 
-Consider the following tables:
+Consider the following:
 ```lua
 local Items = {
 	Cool_Gun = {
@@ -144,4 +144,4 @@ Produce(oldState, function(Draft, table)
 	...
 ```
 
-Currently, Draft copies on read instead of write, meaning performance is not good. This will be changed in the future. In most cases, this is negligible, but it's worth considering. If you can write the same code using something like Llama, use Llama.
+Currently, Draft copies on read instead of write, meaning performance is not good. This will be changed in the future. In most cases, this is negligible, but it's worth considering. If you can easily write the same code using something like Llama, do that instead.
