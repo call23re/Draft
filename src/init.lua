@@ -16,6 +16,16 @@ local function shallowcopy(orig)
 	return copy
 end
 
+local function Propogate(Node, Property, Value)
+	Node[Property] = Value
+	
+	local parent = Node.Parent
+	while parent do
+		parent[Property] = Value
+		parent = parent.Parent
+	end
+end
+
 local function MakeProxy(node, parent, id)
 	local Proxy = {
 		Node = node,
@@ -62,14 +72,7 @@ local function MakeProxy(node, parent, id)
 
 		__newindex = function(_, key, value)
 			if not Proxy.Modified then
-				Proxy.Modified = true
-
-				-- propgate change up tree
-				local parent = Proxy.Parent
-				while parent do
-					parent.Modified = true
-					parent = parent.Parent
-				end
+				Propogate(Proxy, "Modified", true)
 			end
 
 			Proxy.Copy[key] = value
@@ -229,16 +232,6 @@ local function ConstructState(Root)
 	end
 
 	return Tree
-end
-
-local function Propogate(Node, Property, Value)
-	Node[Property] = Value
-	
-	local parent = Node.Parent
-	while parent do
-		parent[Property] = Value
-		parent = parent.Parent
-	end
 end
 
 --[=[
