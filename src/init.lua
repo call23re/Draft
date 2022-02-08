@@ -26,149 +26,140 @@ local function Propogate(Node, Property, Value)
 	end
 end
 
-local function MakeProxy(node, parent, id)
+local function MakeProxy(Node, Parent, id)
 	local Proxy = {
-		Node = node,
-		Parent = parent,
+		Node = Node,
+		Parent = Parent,
 		Type = PROXY_SYMBOL,
-		Copy = shallowcopy(node),
+		Copy = shallowcopy(Node),
 		Modified = false,
 		Proxy = newproxy(true), -- has to be a userdata for the __len metamethod to work
 		ID = id
 	}
 
-	if not parent then
+	if not Parent then
 		ID += 1
 		Proxy.ID = ID
 	end
 
-	-- TODO: abstract all this to separate Proxy class
-
 	local mt = getmetatable(Proxy.Proxy)
 
-	local metamethods = {
-		__index = function(_, index)
-			local value = Proxy.Modified and Proxy.Copy[index] or Proxy.Node[index]
+	mt.__index = function(_, index)
+		local value = Proxy.Modified and Proxy.Copy[index] or Proxy.Node[index]
 
-			if typeof(value) == "table" then
-				if value.Type == PROXY_SYMBOL then
-					return value
-				end
-
-				-- this is required to deal with certain edge cases regarding cyclic tables
-				if CloneLookup[value] then
-					return CloneLookup[value].Proxy
-				end
-
-				-- if there's not already a proxy for the table, make one
-				local newProxy = MakeProxy(value, Proxy, Proxy.ID)
-				Proxy.Copy[index] = newProxy.Proxy
-				CloneLookup[value] = newProxy
-				value = newProxy.Proxy
+		if typeof(value) == "table" then
+			if value.Type == PROXY_SYMBOL then
+				return value
 			end
 
-			return value
-		end,
-
-		__newindex = function(_, key, value)
-			if not Proxy.Modified then
-				Propogate(Proxy, "Modified", true)
+			-- this is required to deal with certain edge cases regarding cyclic tables
+			if CloneLookup[value] then
+				return CloneLookup[value].Proxy
 			end
 
-			Proxy.Copy[key] = value
-
-		end,
-
-		-- reroute other metamethods to the original (cloned) table
-		-- missing __metatable and __mode
-		-- currently not supporting __metatable because it interferes with freezing
-
-		__call = function(_, ...)
-			return Proxy.Copy(...)
-		end,
-
-		__concat = function(a, b)
-			if rawequal(a, Proxy.Proxy) then
-				return Proxy.Copy .. b
-			end
-			return b .. Proxy.Copy
-		end,
-
-		__unm = function()
-			return -Proxy.Copy
-		end,
-
-		__add = function(a, b)
-			local value = (rawequal(a, Proxy.Proxy) and b or a)
-			return Proxy.Copy + value
-		end,
-
-		__sub = function(a, b)
-			if rawequal(a, Proxy.Proxy) then
-				return Proxy.Copy - b
-			end
-			return a - Proxy.Copy
-		end,
-
-		__mul = function(a, b)
-			local value = (rawequal(a, Proxy.Proxy) and b or a)
-			return Proxy.Copy * value
-		end,
-
-		__div = function(a, b)
-			if rawequal(a, Proxy.Proxy) then
-				return Proxy.Copy / b
-			end
-			return a / Proxy.Copy
-		end,
-
-		__mod = function(a, b)
-			if rawequal(a, Proxy.Proxy) then
-				return Proxy.Copy % b
-			end
-			return a % Proxy.Copy
-		end,
-
-		__pow = function(a, b)
-			if rawequal(a, Proxy.Proxy) then
-				return Proxy.Copy ^ b
-			end
-			return a ^ Proxy.Copy
-		end,
-
-		__tostring = function()
-			return tostring(Proxy.Copy)
-		end,
-
-		__eq = function(a, b)
-			local value = (rawequal(a, Proxy.Proxy) and b or a)
-			return Proxy.Copy == value
-		end,
-
-		__lt = function(a, b)
-			if rawequal(a, Proxy.Proxy) then
-				return a.Copy < b
-			end
-			return a < b.Copy
-		end,
-
-		__le = function(a, b)
-			if rawequal(a, Proxy.Proxy) then
-				return a.Copy <= b
-			end
-			return a <= b.Copy
-		end,
-
-		__len = function()
-			return #Proxy.Copy
+			-- if there's not already a proxy for the table, make one
+			local newProxy = MakeProxy(value, Proxy, Proxy.ID)
+			Proxy.Copy[index] = newProxy.Proxy
+			CloneLookup[value] = newProxy
+			value = newProxy.Proxy
 		end
-	}
+
+		return value
+	end
+
+	mt.__newindex = function(_, key, value)
+		if not Proxy.Modified then
+			Propogate(Proxy, "Modified", true)
+		end
+
+		Proxy.Copy[key] = value
+	end
+
+	-- reroute other metamethods to the original (cloned) table
+	-- missing __metatable and __mode
+	-- currently not supporting __metatable because it interferes with freezing
+
+	mt.__call = function(_, ...)
+		return Proxy.Copy(...)
+	end
+
+	mt.__concat = function(a, b)
+		if rawequal(a, Proxy.Proxy) then
+			return Proxy.Copy .. b
+		end
+		return b .. Proxy.Copy
+	end
+
+	mt.__unm = function()
+		return -Proxy.Copy
+	end
+
+	mt.__add = function(a, b)
+		local value = (rawequal(a, Proxy.Proxy) and b or a)
+		return Proxy.Copy + value
+	end
+
+	mt.__sub = function(a, b)
+		if rawequal(a, Proxy.Proxy) then
+			return Proxy.Copy - b
+		end
+		return a - Proxy.Copy
+	end
+
+	mt.__mul = function(a, b)
+		local value = (rawequal(a, Proxy.Proxy) and b or a)
+		return Proxy.Copy * value
+	end
+
+	mt.__div = function(a, b)
+		if rawequal(a, Proxy.Proxy) then
+			return Proxy.Copy / b
+		end
+		return a / Proxy.Copy
+	end
+
+	mt.__mod = function(a, b)
+		if rawequal(a, Proxy.Proxy) then
+			return Proxy.Copy % b
+		end
+		return a % Proxy.Copy
+	end
+
+	mt.__pow = function(a, b)
+		if rawequal(a, Proxy.Proxy) then
+			return Proxy.Copy ^ b
+		end
+		return a ^ Proxy.Copy
+	end
+
+	mt.__tostring = function()
+		return tostring(Proxy.Copy)
+	end
+
+	mt.__eq = function(a, b)
+		local value = (rawequal(a, Proxy.Proxy) and b or a)
+		return Proxy.Copy == value
+	end
+
+	mt.__lt = function(a, b)
+		if rawequal(a, Proxy.Proxy) then
+			return a.Copy < b
+		end
+		return a < b.Copy
+	end
+
+	mt.__le = function(a, b)
+		if rawequal(a, Proxy.Proxy) then
+			return a.Copy <= b
+		end
+		return a <= b.Copy
+	end
+
+	mt.__len = function()
+		return #Proxy.Copy
+	end
 
 	ProxyLookup[Proxy.Proxy] = Proxy
-
-	for key, value in pairs(metamethods) do
-		mt[key] = value
-	end
 
 	return Proxy
 end
