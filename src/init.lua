@@ -216,7 +216,7 @@ local function ConstructState(Root)
 
 	end
 
-	for v, _ in pairs(visited) do
+	for v in pairs(visited) do
 		if not table.isfrozen(v) then
 			table.freeze(v)
 		end
@@ -299,7 +299,11 @@ local function _print(...)
 	
 	for _, Value in pairs(Values) do
 		local metadata = ProxyLookup[Value]
-		table.insert(newValues, metadata and metadata.Copy or Value)
+		if metadata then
+			table.insert(newValues, metadata.Modified and metadata.Copy or metadata.Node)
+		else
+			table.insert(newValues, Value)
+		end
 	end
 	
 	print(unpack(newValues))
