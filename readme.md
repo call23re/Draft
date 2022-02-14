@@ -28,7 +28,7 @@ local newState = Produce(oldState, function(Draft)
 	
 	local b = Draft.bar.b
 	
-	for key, _ in pairs(b) do
+	for key in pairs(b) do
 		b[key] *= 2
 	end
 
