@@ -35,7 +35,7 @@ local newState = Produce(oldState, function(Draft)
 	table.insert(Draft, {1, 2, 3})
 end)
 ```
-Iterating with numeric for works as normal. Inverting a 2d array:
+Inverting a 2d array:
 ```lua
 local Produce = require(...Draft).Produce
 
@@ -126,6 +126,6 @@ local newPlayerData = GodMode(1337)
 Nothing is mutated and anything that isn't changed maintains its references. Additionally, the entire structure of newPlayerData is frozen, making it completely immutable.
 
 ## Limitations
-Draft overwrites certain globals inside of the `Produce` function environment. This may disable certain Luau optimizations related to global access chains.
+Draft overwrites certain globals inside of the `Produce` function environment. This may disable Luau optimizations related to global access chains.
 
 Currently, Draft copies on read instead of write, meaning performance is not good. This will be changed in the future. In most cases, this is negligible, but it's worth considering. If you can easily write the same code using something like Llama, do that instead.
