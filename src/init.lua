@@ -246,7 +246,11 @@ Draft.Produce = function(State, callback)
 
 	local Proxy = MakeProxy(State)
 
-	callback(Proxy.Proxy, Draft)
+	setfenv(callback, setmetatable({
+		table = Draft
+	}, {__index = getfenv()}))
+
+	callback(Proxy.Proxy)
 
 	local newState = ConstructState(Proxy).Root
 

@@ -19,12 +19,12 @@ return function()
 
 	describe("Compare", function()
 
-		local newState = Produce(oldState, function(Draft, Util)
+		local newState = Produce(oldState, function(Draft)
 			Draft.foo = 2
 			
 			local b = Draft.bar.b
 			
-			Util.Iterate(b, function(key, value)
+			table.Iterate(b, function(key, value)
 				b[key] *= 2
 			end)
 		end)

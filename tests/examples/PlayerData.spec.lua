@@ -61,7 +61,7 @@ return function()
 
 	describe("God Mode", function()
 		local function GodMode(ID)
-			return Produce(PlayerData, function(Draft, table)
+			return Produce(PlayerData, function(Draft)
 				local Player = Draft[ID]
 				
 				Player.Health = math.huge

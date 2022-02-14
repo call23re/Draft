@@ -23,7 +23,7 @@ local oldState = {
 	}
 }
 
-local newState = Produce(oldState, function(Draft, table)
+local newState = Produce(oldState, function(Draft)
 	Draft.foo = 2
 	
 	local b = Draft.bar.b
@@ -106,7 +106,7 @@ Modifying data anywhere deep within `PlayerData` without mutating it is hard. Yo
 With Draft it's easy. You make changes as if you were making them directly to the original table.
 ```lua
 local function GodMode(ID)
-	return Produce(PlayerData, function(Draft, table)
+	return Produce(PlayerData, function(Draft)
 		local Player = Draft[ID]
 		
 		Player.Health = math.huge
@@ -128,6 +128,8 @@ Nothing is mutated and anything that isn't changed maintains its references. Add
 ## Limitations
 Unfortunately Luau doesn't support the _pairs_ or _ipairs_ metamethods. This makes it difficult to accurately emulate JavaScript-like proxies. Roblox is, however, considering an _iter_ metamethod. Until it exists, Draft exports an `Iterate` function which can be used to iterate over your current draft. Similarly, the table library doesn't fire _index_ or _newindex_. Draft exports custom functions to emulate the table library. It also exports custom `getmetatable` and `setmetatable` functions.
 
+All of these are also injected in to the callback environment. This may disable certain optimizations Luau makes to global access chains.
+
 These can be accessed in two ways. The first is directly from the Draft module.
 ```lua
 local Draft = require(...Draft)
@@ -135,9 +137,9 @@ local Produce = Draft.Produce
 local Iterate = Draft.Iterate
 ...
 ```
-The second is through the second argument of Produce, which returns a dictionary.
+The second is through the table global, which is changed in this specific environment.
 ```lua
-Produce(oldState, function(Draft, table)
+Produce(oldState, function(Draft)
 	table.Iterate(...)
 	table.insert(...)
 	table.getmetatable(...)
