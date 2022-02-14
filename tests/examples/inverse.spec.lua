@@ -1,8 +1,7 @@
 return function()
 	local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-	local Draft = require(ReplicatedStorage.Draft)
-	local Produce = Draft.Produce
+	local Produce = require(ReplicatedStorage.Draft).Produce
 
 	local oldState = {}
 	for _ = 1, 10 do

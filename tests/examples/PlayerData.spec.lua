@@ -1,8 +1,7 @@
 return function()
 	local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-	local Draft = require(ReplicatedStorage.Draft)
-	local Produce = Draft.Produce
+	local Produce = require(ReplicatedStorage.Draft).Produce
 
 	local Items = {
 		Cool_Gun = {
@@ -68,11 +67,11 @@ return function()
 				Player.Stats.Level = math.huge
 				Player.Stats.Points = math.huge
 				
-				table.foreach(Player.Inventory, function(_, Item)
+				for _, Item in pairs(Player.Inventory) do
 					if Item.Settings.Damage then
 						Item.Settings.Damage = math.huge
 					end
-				end)
+				end
 			end)
 		end
 		

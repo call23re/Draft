@@ -1,8 +1,7 @@
 return function()
 	local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-	local Draft = require(ReplicatedStorage.Draft)
-	local Produce = Draft.Produce
+	local Produce = require(ReplicatedStorage.Draft).Produce
 
 	local oldState = {
 		foo = 1,
@@ -24,9 +23,9 @@ return function()
 			
 			local b = Draft.bar.b
 			
-			table.Iterate(b, function(key, value)
+			for key, _ in pairs(b) do
 				b[key] *= 2
-			end)
+			end
 		end)
 
 		it("should be different", function()

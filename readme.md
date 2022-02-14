@@ -28,9 +28,9 @@ local newState = Produce(oldState, function(Draft)
 	
 	local b = Draft.bar.b
 	
-	table.Iterate(b, function(key)
+	for key, _ in pairs(b) do
 		b[key] *= 2
-	end)
+	end
 
 	table.insert(Draft, {1, 2, 3})
 end)
@@ -113,11 +113,11 @@ local function GodMode(ID)
 		Player.Stats.Level = math.huge
 		Player.Stats.Points = math.huge
 		
-		table.foreach(Player.Inventory, function(_, Item)
+		for _, Item in pairs(Player.Inventory) do
 			if Item.Settings.Damage then
 				Item.Settings.Damage = math.huge
 			end
-		end)
+		end
 	end)
 end
 
@@ -126,24 +126,6 @@ local newPlayerData = GodMode(1337)
 Nothing is mutated and anything that isn't changed maintains its references. Additionally, the entire structure of newPlayerData is frozen, making it completely immutable.
 
 ## Limitations
-Unfortunately Luau doesn't support the _pairs_ or _ipairs_ metamethods. This makes it difficult to accurately emulate JavaScript-like proxies. Roblox is, however, considering an _iter_ metamethod. Until it exists, Draft exports an `Iterate` function which can be used to iterate over your current draft. Similarly, the table library doesn't fire _index_ or _newindex_. Draft exports custom functions to emulate the table library. It also exports custom `getmetatable` and `setmetatable` functions.
-
-All of these are also injected in to the callback environment. This may disable certain optimizations Luau makes to global access chains.
-
-These can be accessed in two ways. The first is directly from the Draft module.
-```lua
-local Draft = require(...Draft)
-local Produce = Draft.Produce
-local Iterate = Draft.Iterate
-...
-```
-The second is through the table global, which is changed in this specific environment.
-```lua
-Produce(oldState, function(Draft)
-	table.Iterate(...)
-	table.insert(...)
-	table.getmetatable(...)
-	...
-```
+Draft overwrites certain globals inside of the `Produce` function environment. This may disable certain Luau optimizations related to global access chains.
 
 Currently, Draft copies on read instead of write, meaning performance is not good. This will be changed in the future. In most cases, this is negligible, but it's worth considering. If you can easily write the same code using something like Llama, do that instead.

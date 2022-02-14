@@ -18,7 +18,7 @@ end
 
 local function Propogate(Node, Property, Value)
 	Node[Property] = Value
-	
+
 	local parent = Node.Parent
 	while parent do
 		parent[Property] = Value
@@ -225,29 +225,257 @@ local function ConstructState(Root)
 	return Tree
 end
 
---[=[
-	Immer-like module for handling immutable state.
-	Especially advantageous when you want to make changes to deeply nested layers of your state.
-	Made for Luau. 
-	@class Draft
-]=]
-local Draft = {}
+-- Global wrappers
+local function _next(t, lastKey)
+	local metadata = ProxyLookup[t]
+	if not metadata then
+		return next(t, lastKey)
+	end
 
---[=[
-	@param State table -- The current state
-	@param callback function -- Calls back a mutable proxy table which reflects your current state and a dictionary containing utility functions
-	@return table -- The updated state
-	@function Produce
-	@within Draft
-]=]
-Draft.Produce = function(State, callback)
+	local key, value = next(metadata.Copy, lastKey)
+
+	if type(key) == "table" then
+		if key.Type and key.Type == PROXY_SYMBOL then
+			key = key.Proxy
+		else
+			local newProxy = MakeProxy(key, metadata, metadata.ID)
+			t[key] = nil
+			t[newProxy.Proxy] = value
+			key = newProxy.Proxy
+		end
+	end
+
+	if type(value) == "table" then
+		if value.Type and value.Type == PROXY_SYMBOL then
+			value = value.Proxy
+		else
+			local newProxy = MakeProxy(value, metadata, metadata.ID)
+			t[key] = newProxy.Proxy
+			value = newProxy.Proxy
+		end
+	end
+
+	return key, value
+end
+
+local function _pairs(Proxy)
+	local metadata = ProxyLookup[Proxy]
+	if not metadata then
+		return next, Proxy, nil
+	end
+	return _next, Proxy, nil
+end
+
+local function iter(t, i)
+	i += 1
+
+	local metadata = ProxyLookup[t]
+	local value = metadata and metadata.Copy[i] or t[i]
+
+	if metadata then
+		if type(value) == "table" then
+			if value.Type and value.Type == PROXY_SYMBOL then
+				value = value.Proxy
+			else
+				local newProxy = MakeProxy(value, metadata, metadata.ID)
+				t[i] = newProxy.Proxy
+				value = newProxy.Proxy
+			end
+		end
+	end
+
+	if value then
+		return i, value
+	end
+end
+
+local function _ipairs(t)
+	return iter, t, 0
+end
+
+local function _print(...)
+	local Values = {...}
+	local newValues = {}
+	
+	for _, Value in pairs(Values) do
+		local metadata = ProxyLookup[Value]
+		table.insert(newValues, metadata and metadata.Copy or Value)
+	end
+	
+	print(unpack(newValues))
+end
+
+-- global table wrappers
+local Table = {}
+
+Table.foreach = function(tbl, callback)
+	for key, value in _pairs(tbl) do
+		callback(key, value)
+	end
+end
+
+Table.insert = function(tbl, ...)
+	local Node = ProxyLookup[tbl]
+
+	if Node then
+		table.insert(Node.Copy, ...)
+		Propogate(Node, "Modified", true)
+		return
+	end
+
+	table.insert(tbl, ...)
+end
+
+Table.remove = function(tbl, ...)
+	local Node = ProxyLookup[tbl]
+
+	if Node then
+		local res = table.remove(Node.Copy, ...)
+		Propogate(Node, "Modified", true)
+		return res
+	end
+
+	return table.remove(tbl, ...)
+end
+
+Table.clear = function(tbl)
+	local Node = ProxyLookup[tbl]
+
+	if Node then
+		table.clear(Node.Copy)
+		Propogate(Node, "Modified", true)
+		return
+	end
+
+	table.clear(tbl)
+end
+
+Table.concat = function(tbl, ...)
+	local Node = ProxyLookup[tbl]
+
+	if Node then
+		return table.concat(Node.Copy, ...)
+	end
+
+	return table.concat(tbl, ...)
+end
+
+Table.create = table.create
+
+Table.find = function(tbl, ...)
+	local Node = ProxyLookup[tbl]
+
+	if Node then
+		return table.find(Node.Copy, ...)
+	end
+
+	return table.find(tbl, ...)
+end
+
+Table.freeze = function(tbl)
+	local Node = ProxyLookup[tbl]
+
+	if Node then
+		table.freeze(Node.Copy)
+		Propogate(Node, "Modified", true)
+		return
+	end
+
+	table.freeze(tbl)
+end
+
+Table.isfrozen = function(tbl)
+	local Node = ProxyLookup[tbl]
+
+	if Node then
+		return table.isfrozen(Node.Copy)
+	end
+
+	return table.isfrozen(tbl)
+end
+
+Table.getn = function(tbl)
+	local Node = ProxyLookup[tbl]
+
+	if Node then
+		return #Node.Copy
+	end
+
+	return #tbl
+end
+
+Table.move = function(tbl, ...)
+	local Node = ProxyLookup[tbl]
+
+	if Node then
+		table.move(Node.Copy, ...)
+		Propogate(Node, "Modified", true)
+		return
+	end
+
+	table.move(tbl, ...)
+end
+
+Table.pack = table.pack
+
+Table.sort = function(tbl, ...)
+	local Node = ProxyLookup[tbl]
+
+	if Node then
+		table.sort(Node.Copy, ...)
+		Propogate(Node, "Modified", true)
+		return
+	end
+
+	table.sort(tbl, ...)
+end
+
+Table.unpack = function(tbl, ...)
+	local Node = ProxyLookup[tbl]
+
+	if Node then
+		return table.unpack(Node.Copy)
+	end
+
+	return table.unpack(tbl)
+end
+
+local function _getmetatable(Node)
+	local Node = ProxyLookup[Node]
+
+	if Node then
+		return getmetatable(Node.Modified and Node.Copy or Node.Node)
+	end
+
+	return getmetatable(Node)
+end
+
+local function _setmetatable(Node, mt)
+	local Node = ProxyLookup[Node]
+
+	if Node then
+		local res = setmetatable(Node.Copy, mt)
+		Propogate(Node, "Modified", true)
+		return res
+	end
+
+	return setmetatable(Node, mt)
+end
+
+local function Produce(State, callback)
 	if type(State) ~= "table" then error("Expected table") return end
 	if type(callback) ~= "function" then error("Expected function") return end
 
 	local Proxy = MakeProxy(State)
 
 	setfenv(callback, setmetatable({
-		table = Draft
+		table = Table,
+		next = _next,
+		pairs = _pairs,
+		ipairs = _ipairs,
+		print = _print,
+		getmetatable = _getmetatable,
+		setmetatable = _setmetatable
 	}, {__index = getfenv()}))
 
 	callback(Proxy.Proxy)
@@ -272,284 +500,6 @@ Draft.Produce = function(State, callback)
 	return newState
 end
 
---[=[
-	Luau doesn't have pairs or ipairs metamethods, so this replaces some of that functionality.
-	@param Proxy userdata -- Reference to your proxy draft
-	@param callback function -- Calls back key and value for each item in proxy
-	@function Iterate
-	@within Draft
-]=]
-Draft.Iterate = function(Proxy, callback)
-	if type(Proxy) ~= "userdata" then error("Provided value is not iterable") end
-	if type(callback) ~= "function" then error("Expected function") end
-
-	local metadata = ProxyLookup[Proxy]
-	if not metadata then error("Provided value is not iterable") end
-
-	for key, value in pairs(metadata.Copy) do
-		if type(value) == "table" then
-			if value.Type and value.Type == PROXY_SYMBOL then
-				value = value.Proxy
-			else
-				local newProxy = MakeProxy(value, metadata, metadata.ID)
-				Proxy[key] = newProxy.Proxy
-				value = newProxy.Proxy
-			end
-		end
-
-		callback(key, value)
-	end
-end
-
---[=[
-	Alias for Iterate
-	@param Proxy userdata -- Reference to your proxy draft
-	@param callback function -- Calls back key and value for each item in proxy
-	@function foreach
-	@within Draft
-]=]
-Draft.foreach = Draft.Iterate
---[=[
-	Alias for Iterate
-	@param Proxy userdata -- Reference to your proxy draft
-	@param callback function -- Calls back key and value for each item in proxy
-	@function pairs
-	@within Draft
-]=]
-Draft.pairs = Draft.Iterate
-
-Draft.fauxGetmetatable = function(Node)
-	return getmetatable(Node.Modified and Node.Copy or Node.Modified)
-end
-
-Draft.fauxSetmetatable = function(Node, mt)
-	local res = setmetatable(Node.Copy, mt)
-	
-	Propogate(Node, "Modified", true)
-	
-	return res
-end
-
--- compatible default table functions
-
---[=[
-	Alias for table.insert
-	@param table table
-	@param position number -- Optional
-	@param value Variant
-	@function insert
-	@within Draft
-]=]
-Draft.insert = function(tbl, ...)
-	local Node = ProxyLookup[tbl]
-	
-	if Node then
-		table.insert(Node.Copy, ...)
-		Propogate(Node, "Modified", true)
-		return
-	end
-	
-	table.insert(tbl, ...)
-end
-
---[=[
-	Alias for table.remove
-	@param table table
-	@param position number
-	@function remove
-	@within Draft
-]=]
-Draft.remove = function(tbl, ...)
-	local Node = ProxyLookup[tbl]
-
-	if Node then
-		local res = table.remove(Node.Copy, ...)
-		Propogate(Node, "Modified", true)
-		return res
-	end
-
-	return table.remove(tbl, ...)
-end
-
---[=[
-	Alias for table.clear
-	@param table table
-	@function clear
-	@within Draft
-]=]
-Draft.clear = function(tbl)
-	local Node = ProxyLookup[tbl]
-
-	if Node then
-		table.clear(Node.Copy)
-		Propogate(Node, "Modified", true)
-		return
-	end
-
-	table.clear(tbl)
-end
-
---[=[
-	Alias for table.concat
-	@param table table
-	@param separator string
-	@param i number -- defaults to 1
-	@param j number
-	@function concat
-	@within Draft
-]=]
-Draft.concat = function(tbl, ...)
-	local Node = ProxyLookup[tbl]
-
-	if Node then
-		return table.concat(Node.Copy, ...)
-	end
-
-	return table.concat(tbl, ...)
-end
-
---[=[
-	Alias for table.create
-	@param count number
-	@param value Variant
-	@function create
-	@within Draft
-]=]
-Draft.create = table.create
-
---[=[
-	Alias for table.find
-	@param haystack table
-	@param needle Variant
-	@param init number
-	@function find
-	@within Draft
-]=]
-Draft.find = function(tbl, ...)
-	local Node = ProxyLookup[tbl]
-
-	if Node then
-		return table.find(Node.Copy, ...)
-	end
-
-	return table.find(tbl, ...)
-end
-
---[=[
-	Alias for table.freeze
-	@param table table
-	@function freeze
-	@within Draft
-]=]
-Draft.freeze = function(tbl)
-	local Node = ProxyLookup[tbl]
-	
-	if Node then
-		table.freeze(Node.Copy)
-		Propogate(Node, "Modified", true)
-		return
-	end
-	
-	table.freeze(tbl)
-end
-
---[=[
-	Alias for table.isfrozen
-	@param table table
-	@function isfrozen
-	@within Draft
-]=]
-Draft.isfrozen = function(tbl)
-	local Node = ProxyLookup[tbl]
-
-	if Node then
-		return table.isfrozen(Node.Copy)
-	end
-
-	return table.isfrozen(tbl)
-end
-
---[=[
-	Alias for table.getn
-	@param table table
-	@function getn
-	@within Draft
-]=]
-Draft.getn = function(tbl)
-	local Node = ProxyLookup[tbl]
-	
-	if Node then
-		return #Node.Copy
-	end
-	
-	return #tbl
-end
-
---[=[
-	Alias for table.move
-	@param a1 table
-	@param f number
-	@param e number
-	@param t number
-	@param a2 table
-	@function move
-	@within Draft
-]=]
-Draft.move = function(tbl, ...)
-	local Node = ProxyLookup[tbl]
-
-	if Node then
-		table.move(Node.Copy, ...)
-		Propogate(Node, "Modified", true)
-		return
-	end
-
-	table.move(tbl, ...)
-end
-
---[=[
-	Alias for table.pack
-	@param values Variant
-	@function pack
-	@within Draft
-]=]
-Draft.pack = table.pack
-
---[=[
-	Alias for table.sort
-	@param table table
-	@param comparator function -- Optional
-	@function sort
-	@within Draft
-]=]
-Draft.sort = function(tbl, ...)
-	local Node = ProxyLookup[tbl]
-
-	if Node then
-		table.sort(Node.Copy, ...)
-		Propogate(Node, "Modified", true)
-		return
-	end
-
-	table.sort(tbl, ...)
-end
-
---[=[
-	Alias for table.unpack
-	@param table table
-	@param i number
-	@param j number
-	@function unpack
-	@within Draft
-]=]
-Draft.unpack = function(tbl, ...)
-	local Node = ProxyLookup[tbl]
-
-	if Node then
-		return table.unpack(Node.Copy)
-	end
-
-	return table.unpack(tbl)
-end
-
-return Draft
+return {
+	Produce = Produce
+}
