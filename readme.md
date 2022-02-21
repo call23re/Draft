@@ -8,7 +8,7 @@ This means that you don't have to deal with copying tables and you aren't constr
 
 Draft will also automatically freeze your state as it goes. If you handle your state entirely using Draft, it will always be completely immutable.
 
-Basic example:
+## Examples
 ```lua
 local Produce = require(...Draft).Produce
 
