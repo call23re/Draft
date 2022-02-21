@@ -128,4 +128,12 @@ Nothing is mutated and anything that isn't changed maintains its references. Add
 ## Limitations
 Draft overwrites certain globals inside of the `Produce` function environment. This may disable Luau optimizations related to global access chains.
 
-Currently, Draft copies on read instead of write, meaning performance is not good. This will be changed in the future. In most cases, this is negligible, but it's worth considering. If you can easily write the same code using something like Llama, do that instead.
+For a number of reasons, Draft is not as performant as using something like Llama. In most cases this is negligible. However, if you can _easily_ write the same code using Llama, do that instead.
+
+You can't overwrite or clear your state by reassigning `Draft`. Use `table.clear` instead. e.g:
+```lua
+table.clear(Draft)
+for key, value in pairs(newState) do
+	Draft[key] = value
+end
+```
