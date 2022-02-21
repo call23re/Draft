@@ -68,7 +68,9 @@ local function MakeProxy(Node, Parent, id)
 	end
 
 	mt.__newindex = function(_, key, value)
-		if not Proxy.Modified then
+		local CurrentValue = Proxy.Modified and Proxy.Copy[key] or Proxy.Node[key]
+		
+		if not Proxy.Modified and value ~= CurrentValue then
 			Propogate(Proxy, "Modified", true)
 		end
 
@@ -164,65 +166,23 @@ local function MakeProxy(Node, Parent, id)
 	return Proxy
 end
 
--- Reconstructs state from a mixed tree of proxies and regular tables.
--- Uses a stack instead of recursion because it's easier (at least in this case) to reason about.
 local function ConstructState(Root)
-	local Tree = {}
-	local currentNode = Tree
+	if not Root.Modified then
+		return Root.Node
+	end
 
-	local toVisit = {{Tree, "Root", Root}}
-	local visited = {}
-
-	while #toVisit > 0 do
-
-		local nextNode = table.remove(toVisit, 1)
-		local root = nextNode[1]
-		local key = nextNode[2]
-		local node = nextNode[3]
-
-		local isProxy = node.Type and (node.Type == PROXY_SYMBOL)
-
-		local Data;
-		if isProxy then
-			Data = node.Modified and node.Copy or node.Node
-		else
-			Data = node
-		end
-
-		if not table.isfrozen(root) then
-			root[key] = Data
-		end
-
-		visited[currentNode] = true
-		currentNode = Data
-
-		if not visited[currentNode] then
-			for key, value in pairs(Data) do
-				if not visited[value] then
-					if type(value) == "table" then
-						table.insert(toVisit, {currentNode, key, value})
-					elseif type(value) == "userdata" then
-						if ProxyLookup[value] then
-							table.insert(toVisit, {currentNode, key, ProxyLookup[value]})
-						end
-					end
-				end
+	for _, Proxy in pairs(ProxyLookup) do
+		for key, value in pairs(Proxy.Copy) do
+			if ProxyLookup[value] then
+				Proxy.Copy[key] = ProxyLookup[value].Copy
 			end
 		end
-
-		if #toVisit == 0 then
-			visited[currentNode] = true
-		end
-
-	end
-
-	for v in pairs(visited) do
-		if not table.isfrozen(v) then
-			table.freeze(v)
+		if not table.isfrozen(Proxy.Copy) then
+			table.freeze(Proxy.Copy)
 		end
 	end
 
-	return Tree
+	return Root.Copy
 end
 
 -- Global wrappers
@@ -484,7 +444,7 @@ local function Produce(State, callback)
 
 	callback(Proxy.Proxy)
 
-	local newState = ConstructState(Proxy).Root
+	local newState = ConstructState(Proxy)
 
 	-- Clean up reference tables
 	for key, value in pairs(CloneLookup) do
