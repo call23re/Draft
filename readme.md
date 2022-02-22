@@ -1,10 +1,10 @@
 # Draft
-Immer-like module for handling immutable state. Made for Luau. Stable but not production ready. Needs lots of refactoring and testing. :(
+Immer-like module for handling immutable state. Made for Luau.
 
 ## Introduction
-Like Immer, handling immutable state is simplified to a single `Produce` function. `Produce` takes your previous state and provides a table. This table acts as a proxy of your previous state, meaning changes made to this table won't influence your previous state.
+Like Immer, handling immutable state is simplified to a single `Produce` function. `Produce` takes your previous state and provides a table. This table, your `Draft`, acts as a proxy of your previous state. This means it _looks_ like your previous state, but any changes won't influence your previous state.
 
-This means that you don't have to deal with copying tables and you aren't constrained to using special immutable data structures.
+This approach means that you don't have to deal with copying tables and you aren't constrained to using special immutable data structures.
 
 Draft will also automatically freeze your state as it goes. If you handle your state entirely using Draft, it will always be completely immutable.
 
@@ -126,11 +126,11 @@ local newPlayerData = GodMode(1337)
 Nothing is mutated and anything that isn't changed maintains its references. Additionally, the entire structure of newPlayerData is frozen, making it completely immutable.
 
 ## Limitations
-Draft overwrites certain globals inside of the `Produce` function environment. This may disable Luau optimizations related to global access chains.
+Draft overwrites certain globals inside of the `Produce` function environment via `setfenv`. This may disable Luau optimizations related to global access chains.
 
 For a number of reasons, Draft is not as performant as using something like Llama. In most cases this is negligible. However, if you can _easily_ write the same code using Llama, do that instead.
 
-You can't overwrite or clear your state by reassigning `Draft`. Use `table.clear` instead. e.g:
+You can't overwrite or clear your state by reassigning `Draft`. Use `table.clear` instead. e.g.
 ```lua
 table.clear(Draft)
 for key, value in pairs(newState) do
