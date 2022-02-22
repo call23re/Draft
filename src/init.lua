@@ -45,7 +45,7 @@ local function MakeProxy(Node, Parent, id)
 	local mt = getmetatable(Proxy.Proxy)
 
 	mt.__index = function(_, index)
-		local value = Proxy.Modified and Proxy.Copy[index] or Proxy.Node[index]
+		local value = if Proxy.Modified then Proxy.Copy[index] else Proxy.Node[index]
 
 		if typeof(value) == "table" then
 			if value.Type == PROXY_SYMBOL then
@@ -68,8 +68,8 @@ local function MakeProxy(Node, Parent, id)
 	end
 
 	mt.__newindex = function(_, key, value)
-		local CurrentValue = Proxy.Modified and Proxy.Copy[key] or Proxy.Node[key]
-		
+		local CurrentValue = if Proxy.Modified then Proxy.Copy[key] else Proxy.Node[key]
+
 		if not Proxy.Modified and value ~= CurrentValue then
 			Propogate(Proxy, "Modified", true)
 		end
@@ -97,7 +97,7 @@ local function MakeProxy(Node, Parent, id)
 	end
 
 	mt.__add = function(a, b)
-		local value = (rawequal(a, Proxy.Proxy) and b or a)
+		local value = (if rawequal(a, Proxy.Proxy) then b else a)
 		return Proxy.Copy + value
 	end
 
@@ -109,7 +109,7 @@ local function MakeProxy(Node, Parent, id)
 	end
 
 	mt.__mul = function(a, b)
-		local value = (rawequal(a, Proxy.Proxy) and b or a)
+		local value = (if rawequal(a, Proxy.Proxy) then b else a)
 		return Proxy.Copy * value
 	end
 
@@ -139,7 +139,7 @@ local function MakeProxy(Node, Parent, id)
 	end
 
 	mt.__eq = function(a, b)
-		local value = (rawequal(a, Proxy.Proxy) and b or a)
+		local value = (if rawequal(a, Proxy.Proxy) then b else a)
 		return Proxy.Copy == value
 	end
 
@@ -256,7 +256,7 @@ end
 local function _print(...)
 	local Values = {...}
 	local newValues = {}
-	
+
 	for _, Value in pairs(Values) do
 		local metadata = ProxyLookup[Value]
 		if metadata then
@@ -265,7 +265,7 @@ local function _print(...)
 			table.insert(newValues, Value)
 		end
 	end
-	
+
 	print(unpack(newValues))
 end
 
