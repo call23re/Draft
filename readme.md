@@ -128,6 +128,8 @@ Nothing is mutated and anything that isn't changed maintains its references. Add
 ## Limitations
 Draft overwrites certain globals inside of the `Produce` function environment via `setfenv`. This may disable Luau optimizations related to global access chains.
 
+While Draft will copy your existing metatables to your new state, it can't keep them from mutating your previous state. Unfortunately there's no sane way to prevent metamethods from making unwanted mutations. Regardless, immutability is generally most beneficial when working with plain data.
+
 For a number of reasons, Draft is not as performant as using something like Llama. In most cases this is negligible. However, if you can _easily_ write the same code using Llama, do that instead.
 
 You can't overwrite or clear your state by reassigning `Draft`. Use `table.clear` instead. e.g.
