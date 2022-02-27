@@ -1,5 +1,6 @@
+local Http = game:GetService("HttpService")
+
 local PROXY_SYMBOL = newproxy()
-local ID = 0
 
 local ProxyLookup = {}
 local CloneLookup = {}
@@ -38,8 +39,7 @@ local function MakeProxy(Node, Parent, id)
 	}
 
 	if not Parent then
-		ID += 1
-		Proxy.ID = ID
+		Proxy.ID = Http:GenerateGUID()
 	end
 
 	local mt = getmetatable(Proxy.Proxy)
@@ -458,8 +458,6 @@ local function Produce(State, callback)
 			ProxyLookup[key] = nil
 		end
 	end
-
-	ID -= 1
 
 	return newState
 end
