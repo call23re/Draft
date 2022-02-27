@@ -5,7 +5,7 @@
 		"ReplicatedStorage": {
 			"$className": "ReplicatedStorage",
 			"Packages": {
-				"$path": "Packages"
+				"$path": "DevPackages"
 			},
 			"Draft": {
 				"$path": "src"
