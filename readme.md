@@ -1,8 +1,8 @@
 # Draft
-Immer-like module for handling immutable state. Made for Luau.
+Immer-like module for handling immutable state. Made for Roblox.
 
 ## Introduction
-Like Immer, handling immutable state is simplified to a single `Produce` function. `Produce` takes your previous state and provides a table. This table, your `Draft`, acts as a proxy of your previous state. This means it _looks_ like your previous state, but any changes won't influence your previous state.
+Like [Immer](https://immerjs.github.io/immer/), handling immutable state is simplified to a single `Produce` function. `Produce` takes your previous state and provides a table. This table, your `Draft`, acts as a proxy of your previous state. This means it _looks_ like your previous state, but any changes won't influence your previous state.
 
 This approach means that you don't have to deal with copying tables and you aren't constrained to using special immutable data structures.
 
@@ -101,7 +101,7 @@ local PlayerData = {
 	...
 }
 ```
-Modifying data anywhere deep within `PlayerData` without mutating it is hard. You could deep clone it, but that also clones data that you aren't touching. You could shallow clone everything _except_ for what you want to change, but that gets convoluted and confusing as you get deeper in to the structure or if you want to make more than one change. You could use a library like Llama (great in the majority of cases), but as you get in to deeper layers, that too becomes convoluted.
+Modifying data anywhere deep within `PlayerData` without mutating it is hard. You could deep clone it, but that also clones data that you aren't touching. You could shallow clone everything _except_ for what you want to change, but that gets convoluted and confusing as you get deeper in to the structure or if you want to make more than one change. You could use a library like [Llama](https://github.com/freddylist/llama) (great in the majority of cases), but as you get in to deeper layers, that too becomes convoluted.
 
 With Draft it's easy. You make changes as if you were making them directly to the original table.
 ```lua
@@ -126,7 +126,7 @@ local newPlayerData = GodMode(1337)
 Nothing is mutated and anything that isn't changed maintains its references. Additionally, the entire structure of newPlayerData is frozen, making it completely immutable.
 
 ## Limitations
-Draft overwrites certain globals inside of the `Produce` function environment via `setfenv`. This may disable Luau optimizations related to global access chains.
+Draft overwrites certain globals inside of the `Produce` function environment via `setfenv`. This disables certain [Luau optimizations](https://luau-lang.org/performance#importing-global-access-chains).
 
 While Draft will copy your existing metatables to your new state, it can't keep them from mutating your previous state. Unfortunately there's no sane way to prevent metamethods from making unwanted mutations. Regardless, immutability is generally most beneficial when working with plain data.
 
