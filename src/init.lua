@@ -5,18 +5,6 @@ local PROXY_SYMBOL = newproxy()
 local ProxyLookup = {}
 local CloneLookup = {}
 
-local function shallowcopy(orig)
-	local copy = {}
-
-	for key, value in pairs(orig) do
-		copy[key] = value
-	end
-
-	setmetatable(copy, getmetatable(orig))
-
-	return copy
-end
-
 local function Propogate(Node, Property, Value)
 	Node[Property] = Value
 
@@ -32,7 +20,7 @@ local function MakeProxy(Node, Parent, id)
 		Node = Node,
 		Parent = Parent,
 		Type = PROXY_SYMBOL,
-		Copy = shallowcopy(Node),
+		Copy = table.clone(Node),
 		Modified = false,
 		Proxy = newproxy(true), -- has to be a userdata for the __len metamethod to work
 		ID = id

@@ -1,7 +1,7 @@
 [package]
 name = "call23re/draft"
 description = "A module for conveniently working with complex immutable state."
-version = "0.1.1"
+version = "0.1.2"
 license = "MIT"
 authors = ["call23re2"]
 registry = "https://github.com/UpliftGames/wally-index"
